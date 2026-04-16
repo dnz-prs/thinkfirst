@@ -70,6 +70,14 @@ formatting — plain text only.
 """
 
 
+DIRECT_PROMPT = """
+You are a helpful, knowledgeable AI assistant. Answer questions directly,
+clearly, and concisely. Give the user exactly what they ask for without
+redirecting them or asking them questions back. Be accurate and thorough.
+Plain text only — no markdown formatting or asterisks.
+"""
+
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -79,6 +87,9 @@ def index():
 def chat():
     data = request.get_json()
     messages = data.get("messages", [])
+    direct   = data.get("direct", False)
+
+    system = DIRECT_PROMPT if direct else SYSTEM_PROMPT
 
     def generate():
         try:
@@ -86,7 +97,7 @@ def chat():
                 model="llama-3.3-70b-versatile",
                 max_tokens=1024,
                 messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "system", "content": system},
                     *messages,
                 ],
                 stream=True,

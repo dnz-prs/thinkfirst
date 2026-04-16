@@ -83,6 +83,48 @@
     }
     .why-btn:hover { color: var(--lavender); border-color: var(--lavender-d); }
 
+    /* ── Mode toggle ── */
+    .mode-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .mode-label {
+      font-size: 12px;
+      color: var(--mist);
+      letter-spacing: 0.04em;
+      transition: color 0.2s;
+      white-space: nowrap;
+    }
+
+    .toggle-track {
+      width: 36px;
+      height: 20px;
+      border-radius: 10px;
+      background: var(--border);
+      position: relative;
+      transition: background 0.25s ease;
+      flex-shrink: 0;
+    }
+
+    .toggle-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--mist);
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      transition: transform 0.25s ease, background 0.25s ease;
+    }
+
+    .mode-toggle.on .toggle-track  { background: var(--sage); }
+    .mode-toggle.on .toggle-thumb  { transform: translateX(16px); background: #fff; }
+    .mode-toggle.on .mode-label    { color: var(--sage); }
+
     /* ── Splash screen ── */
     #splash {
       flex: 1;
@@ -383,6 +425,10 @@
   <header>
     <span class="logo">ThinkFirst</span>
     <span class="tagline">Socratic AI Tutor</span>
+    <div class="mode-toggle" id="modeToggle" onclick="toggleMode()">
+      <span class="mode-label" id="modeLabel">Direct mode</span>
+      <div class="toggle-track"><div class="toggle-thumb"></div></div>
+    </div>
     <button class="why-btn" onclick="openWhy()">Why does it work this way?</button>
   </header>
 
@@ -435,6 +481,24 @@
   let conversation = [];
   let streaming    = false;
   let turnCount    = 0;
+  let directMode   = false;
+
+  function toggleMode() {
+    directMode = !directMode;
+    const toggle = document.getElementById('modeToggle');
+    const label  = document.getElementById('modeLabel');
+    toggle.classList.toggle('on', directMode);
+    label.textContent = directMode ? 'Direct mode' : 'Direct mode';
+
+    // Show a small status note in the feed if conversation has started
+    if (!splash.classList.contains('hidden')) {
+      const note = directMode
+        ? 'Switched to Direct mode — answers without guidance.'
+        : 'Switched to Socratic mode — back to guided thinking.';
+      appendMsg('system', note);
+      scrollBottom();
+    }
+  }
 
   const STAGE_LABELS = [
     'Activating prior knowledge',
@@ -534,9 +598,11 @@
     send.disabled = true;
     streaming = true;
 
-    // Depth indicator
-    appendDepth(turnCount);
-    scrollBottom();
+    // Depth indicator (hidden in direct mode)
+    if (!directMode) {
+      appendDepth(turnCount);
+      scrollBottom();
+    }
 
     // Typing indicator
     const typingEl = appendTyping();
@@ -547,7 +613,7 @@
       const res = await fetch('/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: conversation }),
+        body: JSON.stringify({ messages: conversation, direct: directMode }),
       });
 
       const reader = res.body.getReader();
